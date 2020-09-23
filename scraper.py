@@ -1,8 +1,19 @@
+# How to execute this code
+# Step 1 : pip install flask, selenium, requests
+# Step 2 : make sure you have chrome / firefox installed on your machine
+# Step 3 : Check your chrome version (go to three dot then help then about google chrome) - Not required for Firefox
+# Step 4 : Download the chromedriver (check correct version) from here  "https://chromedriver.storage.googleapis.com/index.html"
+# Step 5 : Download the geckodriver for Firefox from here "https://github.com/mozilla/geckodriver/releases"
+# Step 6 : put it inside the same folder of this code
+
+
 import os
 import time
 import requests
 from selenium import webdriver
 from flask import Flask, render_template, request
+from selenium.webdriver.firefox.options import Options as Firefox_Options
+from selenium.webdriver.chrome.options import Options as Chrome_Options
 
 app = Flask(__name__)
 
@@ -28,7 +39,7 @@ def results():
     return render_template('results.html', output_string=output_string)
 
 
-def fetch_image_urls(query: str, max_links_to_fetch: int, wd: webdriver, sleep_between_interactions: int = 1):
+def fetch_image_urls(query: str, max_links_to_fetch: int, wd: webdriver, sleep_between_interactions: float = 1):
     def scroll_to_end(wd):
         wd.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(sleep_between_interactions)
@@ -96,7 +107,7 @@ def persist_image(folder_path: str, url: str, counter):
         f = open(os.path.join(folder_path, 'jpg' + "_" + str(counter) + ".jpg"), 'wb')
         f.write(image_content)
         f.close()
-        print(f"SUCCESS - saved {url} - as {folder_path}")
+        print(f"SUCCESS - saved {url} - as {folder_path}/jpg_{counter}.jpg")
     except Exception as e:
         print(f"ERROR - Could not save {url} - {e}")
 
@@ -107,21 +118,21 @@ def search_and_download(search_term: str, driver_path: str, target_path='./image
     if not os.path.exists(target_folder):
         os.makedirs(target_folder)
 
-    with webdriver.Firefox(executable_path=driver_path) as wd:
-        res = fetch_image_urls(search_term, number_images, wd=wd, sleep_between_interactions=0.5)
+    if driver_path == './chromedriver':
+        chrome_options = Chrome_Options()
+        chrome_options.add_argument("--headless")
+        with webdriver.Chrome(executable_path=driver_path, options=chrome_options) as wd:
+            res = fetch_image_urls(search_term, number_images, wd=wd, sleep_between_interactions=0.5)
+    else:
+        firefox_options = Firefox_Options()
+        firefox_options.add_argument("--headless")
+        with webdriver.Firefox(executable_path=driver_path, options=firefox_options) as wd:
+            res = fetch_image_urls(search_term, number_images, wd=wd, sleep_between_interactions=0.5)
 
     counter = 0
     for elem in res:
         persist_image(target_folder, elem, counter)
         counter += 1
-
-
-# How to execute this code
-# Step 1 : pip install selenium. pillow, requests
-# Step 2 : make sure you have chrome installed on your machine
-# Step 3 : Check your chrome version ( go to three dot then help then about google chrome )
-# Step 4 : Download the same chrome driver from here  " https://chromedriver.storage.googleapis.com/index.html "
-# Step 5 : put it inside the same folder of this code
 
 
 if __name__ == "__main__":
